@@ -360,7 +360,7 @@ class Gate(metaclass=value.ABCMetaImplementAnyOneOf):
         return self.on(*qubits)
 
     def with_probability(self, probability: 'cirq.TParamVal') -> 'cirq.Gate':
-        """Creates a probabalistic channel with this gate.
+        """Creates a probabilistic channel with this gate.
 
         Args:
             probability: floating point value between 0 and 1, giving the
@@ -601,7 +601,7 @@ class Operation(metaclass=abc.ABCMeta):
         return ops.controlled_operation.ControlledOperation(control_qubits, self, control_values)
 
     def with_probability(self, probability: 'cirq.TParamVal') -> 'cirq.Operation':
-        """Creates a probabalistic channel with this operation.
+        """Creates a probabilistic channel with this operation.
 
         Args:
             probability: floating point value between 0 and 1, giving the
@@ -671,7 +671,7 @@ class Operation(metaclass=abc.ABCMeta):
         # Don't create gigantic matrices.
         shape = protocols.qid_shape_protocol.qid_shape(circuit12)
         if np.prod(shape, dtype=np.int64) > 2**10:
-            return NotImplemented  # coverage: ignore
+            return NotImplemented  # pragma: no cover
 
         m12 = protocols.unitary_protocol.unitary(circuit12, default=None)
         m21 = protocols.unitary_protocol.unitary(circuit21, default=None)
@@ -830,7 +830,14 @@ class TaggedOperation(Operation):
         return protocols.obj_to_dict_helper(self, ['sub_operation', 'tags'])
 
     def _decompose_(self) -> 'cirq.OP_TREE':
-        return protocols.decompose_once(self.sub_operation, default=None)
+        return self._decompose_with_context_()
+
+    def _decompose_with_context_(
+        self, context: Optional['cirq.DecompositionContext'] = None
+    ) -> 'cirq.OP_TREE':
+        return protocols.decompose_once(
+            self.sub_operation, default=None, flatten=False, context=context
+        )
 
     def _pauli_expansion_(self) -> value.LinearDict[str]:
         return protocols.pauli_expansion(self.sub_operation)
@@ -979,7 +986,14 @@ class _InverseCompositeGate(Gate):
         return NotImplemented
 
     def _decompose_(self, qubits):
-        return protocols.inverse(protocols.decompose_once_with_qubits(self._original, qubits))
+        return self._decompose_with_context_(qubits)
+
+    def _decompose_with_context_(
+        self, qubits: Sequence['cirq.Qid'], context: Optional['cirq.DecompositionContext'] = None
+    ) -> 'cirq.OP_TREE':
+        return protocols.inverse(
+            protocols.decompose_once_with_qubits(self._original, qubits, context=context)
+        )
 
     def _has_unitary_(self):
         from cirq import protocols, devices
@@ -1028,15 +1042,13 @@ def _validate_qid_shape(val: Any, qubits: Sequence['cirq.Qid']) -> None:
     qid_shape = protocols.qid_shape(val)
     if len(qubits) != len(qid_shape):
         raise ValueError(
-            'Wrong number of qubits for <{!r}>. '
-            'Expected {} qubits but got <{!r}>.'.format(val, len(qid_shape), qubits)
+            f'Wrong number of qubits for <{val!r}>. '
+            f'Expected {len(qid_shape)} qubits but got <{qubits!r}>.'
         )
     if any(qid.dimension != dimension for qid, dimension in zip(qubits, qid_shape)):
         raise ValueError(
-            'Wrong shape of qids for <{!r}>. '
-            'Expected {} but got {} <{!r}>.'.format(
-                val, qid_shape, tuple(qid.dimension for qid in qubits), qubits
-            )
+            f'Wrong shape of qids for <{val!r}>. '
+            f'Expected {qid_shape} but got {tuple(qid.dimension for qid in qubits)} <{qubits!r}>.'
         )
     if len(set(qubits)) != len(qubits):
         raise ValueError(

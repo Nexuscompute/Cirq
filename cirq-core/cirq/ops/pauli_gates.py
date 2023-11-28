@@ -26,7 +26,7 @@ if TYPE_CHECKING:
         _XEigenState,
         _YEigenState,
         _ZEigenState,
-    )  # coverage: ignore
+    )  # pragma: no cover
 
 
 class Pauli(raw_types.Gate, metaclass=abc.ABCMeta):
@@ -186,7 +186,7 @@ document(
 
     This is the `exponent=1` instance of the `cirq.XPowGate`.
 
-    The untary matrix of `cirq.X` is:
+    The unitary matrix of `cirq.X` is:
     $$
     \begin{bmatrix}
         0 & 1 \\
